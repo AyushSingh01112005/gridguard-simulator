@@ -15,7 +15,7 @@ for (let i = 1; i <= 50; i++) {
 // 2. Initialize Area 3 Transformer
 const transformer = createTransformerMeter("TR-AREA-3", 100);
 
-export function startArea3Simulator(onReading, getIsHouseCut) {
+export function startArea3Simulator(onReading, getIsHouseCut, getHouseReduction) {
   let houseDataWindow = createEmptyDataStore();
   let transformerWindow = [];
   let secondsElapsed = 0;
@@ -29,6 +29,7 @@ export function startArea3Simulator(onReading, getIsHouseCut) {
       const houseNum = index + 1;
       const consumerId = `${CONSUMER_PREFIX}${100 + houseNum}`;
       const isCut = typeof getIsHouseCut === "function" ? getIsHouseCut(consumerId) : false;
+      const reductionPercent = typeof getHouseReduction === "function" ? (getHouseReduction(consumerId) || 0) : 0;
 
       // Base load distinct to each house (between 300W and 3800W)
       const baseLoad = 300 + ((houseNum * 151 + 200) % 3500);
@@ -41,8 +42,11 @@ export function startArea3Simulator(onReading, getIsHouseCut) {
 
       const dynamicLoadW = Math.max(70, Math.min(4800, baseLoad + noise + wave));
 
-      const reading = meter(dynamicLoadW, isCut);
-      totalHousePowerInTick += reading.powerW;
+      const reading = meter(dynamicLoadW, isCut, reductionPercent);
+
+      // Transformer draws the actual physical power (0W if cut)
+      const actualPowerW = isCut ? 0 : dynamicLoadW;
+      totalHousePowerInTick += actualPowerW;
       houseDataWindow[reading.consumerId].push(reading.energyWh);
 
       if (onReading) onReading({ area: AREA_NAME, type: "HOUSE", data: reading });

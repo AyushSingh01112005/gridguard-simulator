@@ -92,10 +92,22 @@ export default function Dashboard() {
   const [cutHouses, setCutHouses] = useState({});
   const cutHousesRef = useRef({});
 
+  // Map of consumerId -> reduction percentage (0, 50, 60, 80)
+  const [reducedHouses, setReducedHouses] = useState({});
+  const reducedHousesRef = useRef({});
+
   const toggleCutHouse = (consumerId) => {
     setCutHouses((prev) => {
       const nextState = { ...prev, [consumerId]: !prev[consumerId] };
       cutHousesRef.current = nextState;
+      return nextState;
+    });
+  };
+
+  const setHouseReduction = (consumerId, percentage) => {
+    setReducedHouses((prev) => {
+      const nextState = { ...prev, [consumerId]: percentage };
+      reducedHousesRef.current = nextState;
       return nextState;
     });
   };
@@ -199,11 +211,12 @@ export default function Dashboard() {
     };
 
     const isCutCheck = (consumerId) => !!cutHousesRef.current[consumerId];
+    const getReductionCheck = (consumerId) => reducedHousesRef.current[consumerId] || 0;
 
     // Launch all 3 sector simulators
-    const stop1 = startArea1Simulator(handleReading, isCutCheck);
-    const stop2 = startArea2Simulator(handleReading, isCutCheck);
-    const stop3 = startArea3Simulator(handleReading, isCutCheck);
+    const stop1 = startArea1Simulator(handleReading, isCutCheck, getReductionCheck);
+    const stop2 = startArea2Simulator(handleReading, isCutCheck, getReductionCheck);
+    const stop3 = startArea3Simulator(handleReading, isCutCheck, getReductionCheck);
 
     // Batch flush updates every 500ms
     const flushInterval = setInterval(() => {
@@ -326,6 +339,7 @@ export default function Dashboard() {
   }, [currentTransformer, activeAreaHousePowerTotal]);
 
   const isModalHouseCut = modalHouseId ? !!cutHouses[modalHouseId] : false;
+  const modalHouseReduction = modalHouseId ? (reducedHouses[modalHouseId] || 0) : 0;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans p-4 lg:p-6 selection:bg-cyan-500 selection:text-slate-950">
@@ -758,6 +772,7 @@ export default function Dashboard() {
           {currentHouseList.map((house) => {
             const isSelected = activeHouse === house.consumerId;
             const isCut = !!cutHouses[house.consumerId] || house.meterStatus === "POWER CUT";
+            const reductionPercent = reducedHouses[house.consumerId] || house.reductionPercent || 0;
             const power = isCut ? 0 : house.powerW || 0;
             const voltage = isCut ? 0 : house.voltageV || 230;
             const current = isCut ? 0 : house.currentA || 0;
@@ -768,6 +783,9 @@ export default function Dashboard() {
             if (isCut) {
               statusColor = "text-rose-500 font-extrabold";
               borderHover = "hover:border-rose-500";
+            } else if (reductionPercent > 0) {
+              statusColor = "text-amber-400 font-extrabold";
+              borderHover = "hover:border-amber-500";
             } else if (power > 2800) {
               statusColor = "text-rose-400 font-black";
               borderHover = "hover:border-rose-500/50";
@@ -789,16 +807,22 @@ export default function Dashboard() {
                 className={`text-left p-3.5 rounded-xl border transition-all duration-150 transform hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between relative overflow-hidden ${
                   isCut
                     ? "bg-rose-950/20 border-rose-800/80 hover:bg-rose-950/40"
+                    : reductionPercent > 0
+                    ? "bg-amber-950/25 border-amber-500/80 ring-1 ring-amber-500/40 hover:bg-amber-950/40"
                     : isSelected
                     ? "bg-cyan-950/40 border-cyan-500 ring-2 ring-cyan-500/30 shadow-lg shadow-cyan-950/50"
                     : `bg-slate-950/60 border-slate-800/80 ${borderHover} hover:bg-slate-900`
                 }`}
               >
-                {isCut && (
+                {isCut ? (
                   <div className="absolute top-0 right-0 bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-bl">
                     POWER CUT
                   </div>
-                )}
+                ) : reductionPercent > 0 ? (
+                  <div className="absolute top-0 right-0 bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-bl">
+                    ⚡ {reductionPercent}% LESS
+                  </div>
+                ) : null}
 
                 <div className="flex items-center justify-between w-full mb-1">
                   <span className="text-xs font-black text-slate-200">
@@ -807,7 +831,9 @@ export default function Dashboard() {
                   {!isCut && (
                     <span
                       className={`w-2 h-2 rounded-full ${
-                        isRunning && power > 0
+                        reductionPercent > 0
+                          ? "bg-amber-400 animate-pulse"
+                          : isRunning && power > 0
                           ? "bg-emerald-400 animate-pulse"
                           : "bg-slate-600"
                       }`}
@@ -834,7 +860,7 @@ export default function Dashboard() {
       {/* POPUP MODAL ON HOUSE CLICK */}
       {modalHouseId && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 lg:p-8 max-w-3xl w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 lg:p-8 max-w-3xl w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-start justify-between pb-4 border-b border-slate-800 mb-6">
               <div className="flex items-center space-x-3">
@@ -842,17 +868,21 @@ export default function Dashboard() {
                   className={`p-3 rounded-2xl ${
                     isModalHouseCut
                       ? "bg-rose-500/10 border border-rose-500/30 text-rose-400"
+                      : modalHouseReduction > 0
+                      ? "bg-amber-500/10 border border-amber-500/30 text-amber-400"
                       : "bg-cyan-500/10 border border-cyan-500/30 text-cyan-400"
                   }`}
                 >
                   {isModalHouseCut ? (
                     <ZapOff className="w-7 h-7" />
+                  ) : modalHouseReduction > 0 ? (
+                    <Zap className="w-7 h-7 animate-pulse" />
                   ) : (
                     <Home className="w-7 h-7" />
                   )}
                 </div>
                 <div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                     <h3 className="text-xl font-extrabold text-white">
                       House Smart Meter: {modalHouseId}
                     </h3>
@@ -860,10 +890,16 @@ export default function Dashboard() {
                       className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                         isModalHouseCut
                           ? "bg-rose-500/20 text-rose-400 border border-rose-500/40"
+                          : modalHouseReduction > 0
+                          ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
                           : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
                       }`}
                     >
-                      {isModalHouseCut ? "POWER CUT" : "NORMAL / CONNECTED"}
+                      {isModalHouseCut
+                        ? "POWER CUT (0V)"
+                        : modalHouseReduction > 0
+                        ? `BYPASS (${modalHouseReduction}% LESS POWER)`
+                        : "NORMAL / CONNECTED"}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 mt-1">
@@ -889,7 +925,9 @@ export default function Dashboard() {
                 <div className="text-xl font-black text-cyan-400 mt-1">
                   {isModalHouseCut ? "0.000" : (modalHouseData?.currentA || 0).toFixed(3)} A
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Smooth low deviation</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">
+                  {modalHouseReduction > 0 ? `${modalHouseReduction}% reduced current` : "Smooth low deviation"}
+                </div>
               </div>
 
               <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
@@ -899,17 +937,23 @@ export default function Dashboard() {
                 <div className="text-xl font-black text-blue-400 mt-1">
                   {isModalHouseCut ? "0.00" : (modalHouseData?.voltageV || 230).toFixed(2)} V
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Nominal 230V</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">
+                  {isModalHouseCut ? "Kill Switch ON (0V)" : "Nominal ~230V Supply"}
+                </div>
               </div>
 
               <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                  Power Consumption
+                  Recorded Power
                 </div>
                 <div className="text-xl font-black text-emerald-400 mt-1">
                   {isModalHouseCut ? "0.00" : (modalHouseData?.powerW || 0).toFixed(2)} W
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Instantaneous load</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">
+                  {modalHouseReduction > 0
+                    ? `Actual load: ${modalHouseData?.actualPowerW || 0} W`
+                    : "Instantaneous meter reading"}
+                </div>
               </div>
 
               <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
@@ -995,39 +1039,81 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* CUT OPTION / REMOTE POWER CONTROL */}
-            <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center space-x-3">
-                {isModalHouseCut ? (
-                  <AlertTriangle className="w-6 h-6 text-rose-500 shrink-0" />
-                ) : (
-                  <ShieldCheck className="w-6 h-6 text-emerald-400 shrink-0" />
-                )}
-                <div>
-                  <div className="text-sm font-bold text-white">
-                    Remote Meter Power Control
-                  </div>
-                  <div className="text-xs text-slate-400">
-                    {isModalHouseCut
-                      ? "Power connection to this smart meter is currently CUT off."
-                      : "Meter is actively drawing power from grid."}
+            {/* CONTROLS SECTION: KILL SWITCH & POWER REDUCTION OPTIONS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 1. KILL SWITCH TYPE REMOTE POWER CONTROL */}
+              <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+                <div className="flex items-center space-x-3 mb-3">
+                  {isModalHouseCut ? (
+                    <AlertTriangle className="w-6 h-6 text-rose-500 shrink-0" />
+                  ) : (
+                    <ShieldCheck className="w-6 h-6 text-emerald-400 shrink-0" />
+                  )}
+                  <div>
+                    <div className="text-sm font-bold text-white">
+                      Remote Power Control (Kill Switch)
+                    </div>
+                    <div className="text-xs text-slate-400 mt-0.5">
+                      {isModalHouseCut
+                        ? "Voltage supply set to 0V. Power completely disconnected."
+                        : "Nominal 230V active supply to smart meter."}
+                    </div>
                   </div>
                 </div>
+
+                <button
+                  onClick={() => toggleCutHouse(modalHouseId)}
+                  className={`w-full flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl font-bold transition-all text-xs shadow-md ${
+                    isModalHouseCut
+                      ? "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950"
+                      : "bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white"
+                  }`}
+                >
+                  <Power className="w-4 h-4" />
+                  <span>
+                    {isModalHouseCut ? "RESTORE POWER / RECONNECT" : "CUT POWER (SET VOLTAGE TO 0V)"}
+                  </span>
+                </button>
               </div>
 
-              <button
-                onClick={() => toggleCutHouse(modalHouseId)}
-                className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm shadow-md shrink-0 ${
-                  isModalHouseCut
-                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950"
-                    : "bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white"
-                }`}
-              >
-                <Power className="w-4 h-4" />
-                <span>
-                  {isModalHouseCut ? "RESTORE POWER / RECONNECT" : "CUT POWER / DISCONNECT METER"}
-                </span>
-              </button>
+              {/* 2. POWER REDUCTION / BYPASS OPTIONS (50%, 60%, 80% LESS POWER) */}
+              <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="text-sm font-bold text-white flex items-center space-x-1.5">
+                      <Zap className="w-4 h-4 text-amber-400" />
+                      <span>Power Reduction / Meter Bypass</span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-slate-400 mb-3">
+                    Select power reduction. Meter records less energy, increasing Sector Line Loss.
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[0, 50, 60, 80].map((pct) => {
+                    const isActive = modalHouseReduction === pct;
+                    return (
+                      <button
+                        key={pct}
+                        disabled={isModalHouseCut}
+                        onClick={() => setHouseReduction(modalHouseId, pct)}
+                        className={`py-2 px-1 rounded-xl text-xs font-black transition-all border ${
+                          isModalHouseCut
+                            ? "opacity-40 cursor-not-allowed bg-slate-900 border-slate-800 text-slate-600"
+                            : isActive
+                            ? pct === 0
+                              ? "bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-950/40"
+                              : "bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-950/40"
+                            : "bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700"
+                        }`}
+                      >
+                        {pct === 0 ? "0% (Normal)" : `${pct}% Less`}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
