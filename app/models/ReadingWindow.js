@@ -17,6 +17,7 @@ const TransformerSchema = new mongoose.Schema(
   {
     dt_id: { type: String, required: true },
     timestamp: { type: String, required: true },
+    energy_kwh: { type: Number },
     power_kw: { type: Number, required: true },
     voltage_v: { type: Number, required: true },
     current_a: { type: Number, required: true },

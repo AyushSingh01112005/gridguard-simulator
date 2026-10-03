@@ -62,6 +62,7 @@ export function startArea3Simulator(onReading, getIsHouseCut, getHouseReduction)
 
       // 1. Calculate Transformer metrics for window
       const tfCount = transformerWindow.length || 1;
+      const totalTfEnergyWh = transformerWindow.reduce((a, b) => a + b.energyWh, 0);
       const avgTfPowerW = transformerWindow.reduce((a, b) => a + b.powerW, 0) / tfCount;
       const avgTfVoltageV = transformerWindow.reduce((a, b) => a + b.voltageV, 0) / tfCount;
       const avgTfCurrentA = transformerWindow.reduce((a, b) => a + b.currentA, 0) / tfCount;
@@ -70,6 +71,7 @@ export function startArea3Simulator(onReading, getIsHouseCut, getHouseReduction)
       const transformerPayload = {
         dt_id: DT_ID,
         timestamp: simulatedAt,
+        energy_kwh: Number((totalTfEnergyWh / 1000).toFixed(4)),
         power_kw: Number((avgTfPowerW / 1000).toFixed(2)),
         voltage_v: Number(avgTfVoltageV.toFixed(1)),
         current_a: Number(avgTfCurrentA.toFixed(1)),
