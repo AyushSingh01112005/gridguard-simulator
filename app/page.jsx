@@ -29,9 +29,15 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
+import dynamic from "next/dynamic";
 import { startArea1Simulator } from "./virtualMeters/area1/simulator";
 import { startArea2Simulator } from "./virtualMeters/area2/simulator";
 import { startArea3Simulator } from "./virtualMeters/area3/simulator";
+
+const Microgrid3DView = dynamic(
+  () => import("./components/Microgrid3DView"),
+  { ssr: false }
+);
 
 const AREAS = ["AREA-1", "AREA-2", "AREA-3"];
 
@@ -39,21 +45,21 @@ const AREA_META = {
   "AREA-1": {
     name: "Sector Alpha (Area 1)",
     transformerId: "TR-AREA-1",
-    color: "#3b82f6",
+    color: "#2563eb", // Apple Blue
     consumerPrefix: "A1-C",
     capacity: "100 kVA",
   },
   "AREA-2": {
     name: "Sector Beta (Area 2)",
     transformerId: "TR-AREA-2",
-    color: "#10b981",
+    color: "#059669", // Apple Emerald Green
     consumerPrefix: "A2-C",
     capacity: "100 kVA",
   },
   "AREA-3": {
     name: "Sector Gamma (Area 3)",
     transformerId: "TR-AREA-3",
-    color: "#8b5cf6",
+    color: "#7c3aed", // Apple Purple
     consumerPrefix: "A3-C",
     capacity: "100 kVA",
   },
@@ -213,12 +219,10 @@ export default function Dashboard() {
     const isCutCheck = (consumerId) => !!cutHousesRef.current[consumerId];
     const getReductionCheck = (consumerId) => reducedHousesRef.current[consumerId] || 0;
 
-    // Launch all 3 sector simulators
     const stop1 = startArea1Simulator(handleReading, isCutCheck, getReductionCheck);
     const stop2 = startArea2Simulator(handleReading, isCutCheck, getReductionCheck);
     const stop3 = startArea3Simulator(handleReading, isCutCheck, getReductionCheck);
 
-    // Batch flush updates every 500ms
     const flushInterval = setInterval(() => {
       if (bufferRef.current.dirty) {
         const buf = bufferRef.current;
@@ -293,7 +297,6 @@ export default function Dashboard() {
   // Modal House Instant Reading & Rolling Chart
   const modalHouseData = useMemo(() => {
     if (!modalHouseId) return null;
-    // Find area of modal house by prefix
     for (const areaKey of AREAS) {
       const prefix = AREA_META[areaKey].consumerPrefix;
       if (modalHouseId.startsWith(prefix)) {
@@ -342,35 +345,35 @@ export default function Dashboard() {
   const modalHouseReduction = modalHouseId ? (reducedHouses[modalHouseId] || 0) : 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans p-4 lg:p-6 selection:bg-cyan-500 selection:text-slate-950">
-      {/* HEADER BAR */}
-      <header className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 lg:p-6 backdrop-blur-md shadow-2xl">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans p-4 lg:p-8 selection:bg-blue-600 selection:text-white">
+      {/* APPLE STYLE HEADER BAR */}
+      <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-5 bg-white/80 border border-slate-200/80 rounded-3xl p-6 lg:p-7 backdrop-blur-xl shadow-xl shadow-slate-200/50">
         <div className="flex items-center space-x-4">
-          <div className="p-3 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-xl shadow-lg shadow-cyan-500/20">
-            <Zap className="w-8 h-8 text-white animate-pulse" />
+          <div className="p-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl shadow-lg shadow-blue-500/20 text-white">
+            <Zap className="w-8 h-8 animate-pulse" />
           </div>
           <div>
             <div className="flex items-center space-x-3">
-              <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+              <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-slate-900">
                 Microgrid Smart Meter Dashboard
               </h1>
               <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
+                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold tracking-wide ${
                   isRunning
-                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                    : "bg-slate-800 text-slate-400 border border-slate-700"
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm"
+                    : "bg-slate-100 text-slate-600 border border-slate-200"
                 }`}
               >
                 <span
-                  className={`w-2 h-2 rounded-full mr-1.5 ${
-                    isRunning ? "bg-emerald-400 animate-ping" : "bg-slate-500"
+                  className={`w-2 h-2 rounded-full mr-2 ${
+                    isRunning ? "bg-emerald-500 animate-ping" : "bg-slate-400"
                   }`}
                 />
-                {isRunning ? "Simulating Live" : "Idle"}
+                {isRunning ? "Live Streaming" : "Idle"}
               </span>
             </div>
-            <p className="text-xs lg:text-sm text-slate-400 mt-1">
-              3 Sector Grid • 3 Distribution Transformers • 150 Smart Meters • 5 Columns per Area
+            <p className="text-xs lg:text-sm text-slate-500 font-medium mt-1">
+              3 Sector Distribution Grid • 3 Transformers • 150 Smart Meters
             </p>
           </div>
         </div>
@@ -379,20 +382,20 @@ export default function Dashboard() {
         <div className="flex items-center space-x-3 self-end md:self-auto">
           <button
             onClick={() => setIsRunning(!isRunning)}
-            className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-bold transition-all transform active:scale-95 shadow-lg ${
+            className={`flex items-center space-x-2.5 px-6 py-3 rounded-2xl font-semibold transition-all transform active:scale-95 shadow-md ${
               isRunning
-                ? "bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white shadow-rose-900/40"
-                : "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 shadow-emerald-950/50"
+                ? "bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/20"
+                : "bg-slate-900 hover:bg-black text-white shadow-slate-900/20"
             }`}
           >
             {isRunning ? (
               <>
-                <Square className="w-5 h-5 fill-current" />
+                <Square className="w-4 h-4 fill-current" />
                 <span>Stop Simulation</span>
               </>
             ) : (
               <>
-                <Play className="w-5 h-5 fill-current" />
+                <Play className="w-4 h-4 fill-current" />
                 <span>Start Simulation</span>
               </>
             )}
@@ -400,74 +403,93 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* METRICS & OVERVIEW CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 backdrop-blur-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
+      {/* METRICS & OVERVIEW CARDS (APPLE LIGHT CLEAN CARDS) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
             <span>TOTAL MICROGRID DEMAND</span>
-            <Gauge className="w-4 h-4 text-cyan-400" />
+            <Gauge className="w-4 h-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-white">
+          <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
             {(totalGridPower / 1000).toFixed(2)}{" "}
-            <span className="text-sm font-semibold text-slate-400">kW</span>
+            <span className="text-base font-semibold text-slate-400">kW</span>
           </div>
-          <div className="text-xs text-slate-400 mt-1">
-            Across 3 Area Transformers
+          <div className="text-xs text-slate-500 font-medium mt-1">
+            Across 3 Sector Transformers
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 backdrop-blur-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
+        <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
             <span>SELECTED SECTOR DEMAND</span>
-            <Activity className="w-4 h-4 text-blue-400" />
+            <Activity className="w-4 h-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-black text-blue-400">
+          <div className="text-3xl font-extrabold text-emerald-600 tracking-tight">
             {((currentTransformer.powerW || 0) / 1000).toFixed(2)}{" "}
-            <span className="text-sm font-semibold text-slate-400">kW</span>
+            <span className="text-base font-semibold text-slate-400">kW</span>
           </div>
-          <div className="text-xs text-slate-400 mt-1">
+          <div className="text-xs text-slate-500 font-medium mt-1">
             Houses load: {(activeAreaHousePowerTotal / 1000).toFixed(2)} kW
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 backdrop-blur-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
+        <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
             <span>SECTOR LINE LOSS</span>
-            <TrendingUp className="w-4 h-4 text-amber-400" />
+            <TrendingUp className="w-4 h-4 text-amber-600" />
           </div>
-          <div className="text-2xl font-black text-amber-400">
+          <div className="text-3xl font-extrabold text-amber-600 tracking-tight">
             {activeLineLoss.toFixed(1)}{" "}
-            <span className="text-sm font-semibold text-slate-400">W</span>
+            <span className="text-base font-semibold text-slate-400">W</span>
           </div>
-          <div className="text-xs text-slate-400 mt-1">
+          <div className="text-xs text-slate-500 font-medium mt-1">
             ~5% estimated technical loss
           </div>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 backdrop-blur-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
+        <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
             <span>ACTIVE CONSUMERS</span>
-            <Home className="w-4 h-4 text-emerald-400" />
+            <Home className="w-4 h-4 text-indigo-600" />
           </div>
-          <div className="text-2xl font-black text-emerald-400">
+          <div className="text-3xl font-extrabold text-indigo-600 tracking-tight">
             50{" "}
-            <span className="text-sm font-semibold text-slate-400">
+            <span className="text-base font-semibold text-slate-400">
               Meters / Sector
             </span>
           </div>
-          <div className="text-xs text-slate-400 mt-1">
+          <div className="text-xs text-slate-500 font-medium mt-1">
             Total 150 Smart Meters Active
           </div>
         </div>
       </div>
 
+      {/* 3D INTERACTIVE MICROGRID VISUALIZATION (APPLE STUDIO LIGHT) */}
+      <section className="mb-8">
+        <Microgrid3DView
+          latestReadings={latestReadings}
+          latestTransformers={latestTransformers}
+          activeArea={activeArea}
+          activeHouse={activeHouse}
+          cutHouses={cutHouses}
+          reducedHouses={reducedHouses}
+          searchFilter={searchFilter}
+          onSelectArea={setActiveArea}
+          onSelectHouse={(consumerId) => {
+            setActiveHouse(consumerId);
+            setModalHouseId(consumerId);
+          }}
+          isRunning={isRunning}
+        />
+      </section>
+
       {/* TRANSFORMER SELECTION BAR (3 SECTORS) */}
-      <section className="mb-6">
-        <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-3 flex items-center space-x-2">
-          <Cpu className="w-4 h-4 text-cyan-400" />
+      <section className="mb-8">
+        <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-4 flex items-center space-x-2">
+          <Cpu className="w-4 h-4 text-blue-600" />
           <span>Select Sector Transformer</span>
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {AREAS.map((areaKey) => {
             const meta = AREA_META[areaKey];
             const isSelected = activeArea === areaKey;
@@ -478,74 +500,71 @@ export default function Dashboard() {
               <button
                 key={areaKey}
                 onClick={() => setActiveArea(areaKey)}
-                className={`text-left transition-all duration-200 rounded-2xl p-5 border relative overflow-hidden cursor-pointer ${
+                className={`text-left transition-all duration-200 rounded-3xl p-6 border relative overflow-hidden cursor-pointer ${
                   isSelected
-                    ? "bg-slate-900 border-cyan-500 shadow-xl shadow-cyan-500/10 ring-2 ring-cyan-500/20"
-                    : "bg-slate-900/50 border-slate-800 hover:border-slate-700 hover:bg-slate-900/80"
+                    ? "bg-white border-blue-500 ring-2 ring-blue-500/20 shadow-xl shadow-blue-500/5"
+                    : "bg-white/80 border-slate-200/80 hover:border-slate-300 hover:bg-white shadow-sm"
                 }`}
               >
-                {/* Accent Top Bar */}
                 <div
                   className="absolute top-0 left-0 right-0 h-1.5"
                   style={{
-                    background: isSelected
-                      ? meta.color
-                      : "rgba(148, 163, 184, 0.2)",
+                    background: isSelected ? meta.color : "#e2e8f0",
                   }}
                 />
 
-                <div className="flex justify-between items-start mb-3">
+                <div className="flex justify-between items-start mb-4">
                   <div>
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
                       {meta.transformerId}
                     </span>
-                    <h3 className="text-lg font-bold text-white mt-0.5">
+                    <h3 className="text-xl font-bold text-slate-900 mt-0.5">
                       {meta.name}
                     </h3>
                   </div>
                   <span
-                    className="px-2.5 py-1 rounded-md text-xs font-bold"
+                    className="px-3 py-1 rounded-full text-xs font-bold"
                     style={{
-                      backgroundColor: `${meta.color}20`,
+                      backgroundColor: `${meta.color}15`,
                       color: meta.color,
-                      border: `1px solid ${meta.color}40`,
+                      border: `1px solid ${meta.color}30`,
                     }}
                   >
                     {meta.capacity}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-800/80">
-                  <div>
+                <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-slate-100">
+                  <div className="bg-slate-50 p-2.5 rounded-2xl">
                     <div className="text-[10px] text-slate-400 font-semibold uppercase">
                       Power
                     </div>
-                    <div className="text-sm font-extrabold text-white">
+                    <div className="text-sm font-bold text-slate-900">
                       {powerkW.toFixed(2)} kW
                     </div>
                   </div>
-                  <div>
+                  <div className="bg-slate-50 p-2.5 rounded-2xl">
                     <div className="text-[10px] text-slate-400 font-semibold uppercase">
                       Voltage
                     </div>
-                    <div className="text-sm font-extrabold text-white">
+                    <div className="text-sm font-bold text-slate-900">
                       {trData.voltageV || 230} V
                     </div>
                   </div>
-                  <div>
+                  <div className="bg-slate-50 p-2.5 rounded-2xl">
                     <div className="text-[10px] text-slate-400 font-semibold uppercase">
                       Current
                     </div>
-                    <div className="text-sm font-extrabold text-white">
+                    <div className="text-sm font-bold text-slate-900">
                       {(trData.currentA || 0).toFixed(1)} A
                     </div>
                   </div>
                 </div>
 
                 {isSelected && (
-                  <div className="mt-3 flex items-center justify-between text-xs text-cyan-400 font-medium">
-                    <span>✓ Currently Viewable</span>
-                    <span className="text-[10px] bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+                  <div className="mt-4 flex items-center justify-between text-xs text-blue-600 font-semibold">
+                    <span>✓ Currently Viewable Sector</span>
+                    <span className="text-[10px] bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
                       50 Houses (5 Columns)
                     </span>
                   </div>
@@ -556,10 +575,10 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* CHARTS SECTION (2 COLUMNS) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      {/* CHARTS SECTION (2 COLUMNS - APPLE LIGHT CHARTS) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* LEFT CHART: Transformer Rolling 60s Power Timeline */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 backdrop-blur-md flex flex-col justify-between shadow-xl">
+        <div className="bg-white border border-slate-200/80 rounded-3xl p-6 backdrop-blur-md flex flex-col justify-between shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="flex items-center space-x-2">
@@ -567,18 +586,18 @@ export default function Dashboard() {
                   className="w-5 h-5"
                   style={{ color: AREA_META[activeArea].color }}
                 />
-                <h3 className="text-base font-bold text-white">
+                <h3 className="text-base font-bold text-slate-900">
                   {AREA_META[activeArea].name} Transformer Load Timeline
                 </h3>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
                 Real-time 60-second moving window for{" "}
                 {AREA_META[activeArea].transformerId}
               </p>
             </div>
             <div className="text-right">
-              <span className="text-xs text-slate-400">Current Load</span>
-              <div className="text-lg font-black text-white">
+              <span className="text-xs text-slate-400 font-medium">Current Load</span>
+              <div className="text-xl font-extrabold text-slate-900">
                 {(currentTransformer.powerW || 0).toFixed(1)} W
               </div>
             </div>
@@ -599,7 +618,7 @@ export default function Dashboard() {
                       <stop
                         offset="5%"
                         stopColor={AREA_META[activeArea].color}
-                        stopOpacity={0.4}
+                        stopOpacity={0.3}
                       />
                       <stop
                         offset="95%"
@@ -608,25 +627,26 @@ export default function Dashboard() {
                       />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis
                     dataKey="time"
-                    stroke="#64748b"
+                    stroke="#94a3b8"
                     fontSize={10}
                     tickLine={false}
                   />
                   <YAxis
-                    stroke="#64748b"
+                    stroke="#94a3b8"
                     fontSize={10}
                     unit="W"
                     tickLine={false}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#0f172a",
-                      borderColor: "#334155",
-                      borderRadius: "0.75rem",
-                      color: "#f8fafc",
+                      backgroundColor: "#ffffff",
+                      borderColor: "#e2e8f0",
+                      borderRadius: "1rem",
+                      color: "#0f172a",
+                      boxShadow: "0 10px 15px -3px rgba(0,0,0,0.08)",
                     }}
                   />
                   <Area
@@ -634,32 +654,32 @@ export default function Dashboard() {
                     dataKey="powerW"
                     name="Transformer Power (W)"
                     stroke={AREA_META[activeArea].color}
-                    strokeWidth={2}
+                    strokeWidth={2.5}
                     fillOpacity={1}
                     fill="url(#transformerGrad)"
                   />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-500 border border-dashed border-slate-800 rounded-xl">
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 border border-dashed border-slate-200 rounded-2xl">
                 <Activity className="w-8 h-8 mb-2 animate-bounce opacity-40" />
-                <p className="text-sm">Click "Start Simulation" to stream transformer timeline</p>
+                <p className="text-sm font-medium">Click "Start Simulation" to stream transformer timeline</p>
               </div>
             )}
           </div>
         </div>
 
         {/* RIGHT CHART: Selected House 60s Power Timeline */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 backdrop-blur-md flex flex-col justify-between shadow-xl">
+        <div className="bg-white border border-slate-200/80 rounded-3xl p-6 backdrop-blur-md flex flex-col justify-between shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="flex items-center space-x-2">
-                <Home className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-base font-bold text-white">
+                <Home className="w-5 h-5 text-blue-600" />
+                <h3 className="text-base font-bold text-slate-900">
                   House Timeline: {activeHouse || "Select a House"}
                 </h3>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
                 {activeHouseData
                   ? `Meter: ${activeHouseData.meterId} • Sanctioned 5000 W`
                   : "Click any house card below to monitor its timeline"}
@@ -667,8 +687,8 @@ export default function Dashboard() {
             </div>
             {activeHouseData && (
               <div className="text-right">
-                <span className="text-xs text-slate-400">Instant Load</span>
-                <div className="text-lg font-black text-cyan-400">
+                <span className="text-xs text-slate-400 font-medium">Instant Load</span>
+                <div className="text-xl font-extrabold text-blue-600">
                   {activeHouseData.powerW.toFixed(1)} W
                 </div>
               </div>
@@ -687,46 +707,47 @@ export default function Dashboard() {
                       x2="0"
                       y2="1"
                     >
-                      <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.0} />
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis
                     dataKey="time"
-                    stroke="#64748b"
+                    stroke="#94a3b8"
                     fontSize={10}
                     tickLine={false}
                   />
                   <YAxis
-                    stroke="#64748b"
+                    stroke="#94a3b8"
                     fontSize={10}
                     unit="W"
                     tickLine={false}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#0f172a",
-                      borderColor: "#334155",
-                      borderRadius: "0.75rem",
-                      color: "#f8fafc",
+                      backgroundColor: "#ffffff",
+                      borderColor: "#e2e8f0",
+                      borderRadius: "1rem",
+                      color: "#0f172a",
+                      boxShadow: "0 10px 15px -3px rgba(0,0,0,0.08)",
                     }}
                   />
                   <Area
                     type="monotone"
                     dataKey="powerW"
                     name="House Load (W)"
-                    stroke="#06b6d4"
-                    strokeWidth={2}
+                    stroke="#2563eb"
+                    strokeWidth={2.5}
                     fillOpacity={1}
                     fill="url(#houseGrad)"
                   />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-500 border border-dashed border-slate-800 rounded-xl">
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 border border-dashed border-slate-200 rounded-2xl">
                 <Home className="w-8 h-8 mb-2 opacity-40" />
-                <p className="text-sm">
+                <p className="text-sm font-medium">
                   {isRunning
                     ? "Click any house card below to view 60s timeline"
                     : "Start simulation and select a house card below"}
@@ -737,38 +758,37 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 50 HOUSES GRID SECTION (5 COLUMNS PER TRANSFORMER) */}
-      <section className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 backdrop-blur-md shadow-2xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
+      {/* 50 HOUSES GRID SECTION (5 COLUMNS PER TRANSFORMER - APPLE CARDS) */}
+      <section className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-100">
           <div>
             <div className="flex items-center space-x-2">
-              <Sliders className="w-5 h-5 text-cyan-400" />
-              <h2 className="text-xl font-bold text-white">
+              <Sliders className="w-5 h-5 text-blue-600" />
+              <h2 className="text-xl font-bold text-slate-900">
                 50 Houses Smart Meters — {AREA_META[activeArea].name} (5 Columns)
               </h2>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 font-medium mt-1">
               Click any house smart meter card to pop up live metrics (Current, Voltage, Energy graph & Cut option)
             </p>
           </div>
 
           <div className="flex items-center space-x-3">
-            {/* Search filter input */}
             <div className="relative w-full md:w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
                 placeholder="Search House ID (e.g. A1-C105)..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner"
               />
             </div>
           </div>
         </div>
 
-        {/* CARDS GRID - 5 COLUMNS ONLY */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        {/* CARDS GRID - 5 COLUMNS ONLY (APPLE LIGHT STYLING) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
           {currentHouseList.map((house) => {
             const isSelected = activeHouse === house.consumerId;
             const isCut = !!cutHouses[house.consumerId] || house.meterStatus === "POWER CUT";
@@ -777,24 +797,20 @@ export default function Dashboard() {
             const voltage = isCut ? 0 : house.voltageV || 230;
             const current = isCut ? 0 : house.currentA || 0;
 
-            // Dynamic load status color coding
-            let statusColor = "text-slate-400";
-            let borderHover = "hover:border-slate-700";
+            let statusColor = "text-slate-900";
+            let borderHover = "hover:border-slate-300";
             if (isCut) {
-              statusColor = "text-rose-500 font-extrabold";
-              borderHover = "hover:border-rose-500";
+              statusColor = "text-rose-600 font-extrabold";
+              borderHover = "hover:border-rose-400";
             } else if (reductionPercent > 0) {
-              statusColor = "text-amber-400 font-extrabold";
-              borderHover = "hover:border-amber-500";
+              statusColor = "text-amber-600 font-extrabold";
+              borderHover = "hover:border-amber-400";
             } else if (power > 2800) {
-              statusColor = "text-rose-400 font-black";
-              borderHover = "hover:border-rose-500/50";
-            } else if (power > 1400) {
-              statusColor = "text-amber-400 font-bold";
-              borderHover = "hover:border-amber-500/50";
+              statusColor = "text-orange-600 font-extrabold";
+              borderHover = "hover:border-orange-400";
             } else if (power > 0) {
-              statusColor = "text-emerald-400 font-bold";
-              borderHover = "hover:border-emerald-500/50";
+              statusColor = "text-emerald-600 font-bold";
+              borderHover = "hover:border-emerald-400";
             }
 
             return (
@@ -804,50 +820,50 @@ export default function Dashboard() {
                   setActiveHouse(house.consumerId);
                   setModalHouseId(house.consumerId);
                 }}
-                className={`text-left p-3.5 rounded-xl border transition-all duration-150 transform hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between relative overflow-hidden ${
+                className={`text-left p-4 rounded-2xl border transition-all duration-200 transform hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between relative overflow-hidden ${
                   isCut
-                    ? "bg-rose-950/20 border-rose-800/80 hover:bg-rose-950/40"
+                    ? "bg-rose-50/60 border-rose-200 hover:bg-rose-50"
                     : reductionPercent > 0
-                    ? "bg-amber-950/25 border-amber-500/80 ring-1 ring-amber-500/40 hover:bg-amber-950/40"
+                    ? "bg-amber-50/60 border-amber-300 ring-1 ring-amber-300/40 hover:bg-amber-50"
                     : isSelected
-                    ? "bg-cyan-950/40 border-cyan-500 ring-2 ring-cyan-500/30 shadow-lg shadow-cyan-950/50"
-                    : `bg-slate-950/60 border-slate-800/80 ${borderHover} hover:bg-slate-900`
+                    ? "bg-blue-50/60 border-blue-500 ring-2 ring-blue-500/20 shadow-md shadow-blue-500/10"
+                    : `bg-white border-slate-200/80 ${borderHover} hover:shadow-md`
                 }`}
               >
                 {isCut ? (
-                  <div className="absolute top-0 right-0 bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-bl">
+                  <div className="absolute top-0 right-0 bg-rose-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-bl-lg">
                     POWER CUT
                   </div>
                 ) : reductionPercent > 0 ? (
-                  <div className="absolute top-0 right-0 bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-bl">
+                  <div className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-bl-lg">
                     ⚡ {reductionPercent}% LESS
                   </div>
                 ) : null}
 
                 <div className="flex items-center justify-between w-full mb-1">
-                  <span className="text-xs font-black text-slate-200">
+                  <span className="text-xs font-bold text-slate-900">
                     {house.consumerId}
                   </span>
                   {!isCut && (
                     <span
                       className={`w-2 h-2 rounded-full ${
                         reductionPercent > 0
-                          ? "bg-amber-400 animate-pulse"
+                          ? "bg-amber-500 animate-pulse"
                           : isRunning && power > 0
-                          ? "bg-emerald-400 animate-pulse"
-                          : "bg-slate-600"
+                          ? "bg-emerald-500 animate-pulse"
+                          : "bg-slate-300"
                       }`}
                     />
                   )}
                 </div>
 
-                <div className="my-1.5">
-                  <div className={`text-lg tracking-tight ${statusColor}`}>
+                <div className="my-2">
+                  <div className={`text-xl tracking-tight ${statusColor}`}>
                     {isCut ? "OFF" : `${power.toFixed(0)} W`}
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center text-[11px] text-slate-400 pt-1.5 border-t border-slate-800/60 w-full">
+                <div className="flex justify-between items-center text-[11px] text-slate-500 font-medium pt-2 border-t border-slate-100 w-full">
                   <span>Volt: {voltage.toFixed(0)}V</span>
                   <span>Curr: {current.toFixed(2)}A</span>
                 </div>
@@ -857,20 +873,20 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* POPUP MODAL ON HOUSE CLICK */}
+      {/* POPUP MODAL ON HOUSE CLICK (APPLE DIALOG) */}
       {modalHouseId && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 lg:p-8 max-w-3xl w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200/90 rounded-3xl p-6 lg:p-8 max-w-3xl w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
-            <div className="flex items-start justify-between pb-4 border-b border-slate-800 mb-6">
-              <div className="flex items-center space-x-3">
+            <div className="flex items-start justify-between pb-5 border-b border-slate-100 mb-6">
+              <div className="flex items-center space-x-3.5">
                 <div
-                  className={`p-3 rounded-2xl ${
+                  className={`p-3.5 rounded-2xl ${
                     isModalHouseCut
-                      ? "bg-rose-500/10 border border-rose-500/30 text-rose-400"
+                      ? "bg-rose-50 border border-rose-200 text-rose-600"
                       : modalHouseReduction > 0
-                      ? "bg-amber-500/10 border border-amber-500/30 text-amber-400"
-                      : "bg-cyan-500/10 border border-cyan-500/30 text-cyan-400"
+                      ? "bg-amber-50 border border-amber-200 text-amber-600"
+                      : "bg-blue-50 border border-blue-200 text-blue-600"
                   }`}
                 >
                   {isModalHouseCut ? (
@@ -883,16 +899,16 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                    <h3 className="text-xl font-extrabold text-white">
+                    <h3 className="text-xl font-bold text-slate-900">
                       House Smart Meter: {modalHouseId}
                     </h3>
                     <span
-                      className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                      className={`px-3 py-0.5 rounded-full text-xs font-bold ${
                         isModalHouseCut
-                          ? "bg-rose-500/20 text-rose-400 border border-rose-500/40"
+                          ? "bg-rose-100 text-rose-700 border border-rose-300"
                           : modalHouseReduction > 0
-                          ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
-                          : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                          ? "bg-amber-100 text-amber-800 border border-amber-300"
+                          : "bg-emerald-100 text-emerald-800 border border-emerald-300"
                       }`}
                     >
                       {isModalHouseCut
@@ -902,7 +918,7 @@ export default function Dashboard() {
                         : "NORMAL / CONNECTED"}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-500 font-medium mt-1">
                     Meter ID: {modalHouseData?.meterId || `M-${modalHouseId}`} • Category: RESIDENTIAL • Sanctioned Load: 5000 W
                   </p>
                 </div>
@@ -910,93 +926,93 @@ export default function Dashboard() {
 
               <button
                 onClick={() => setModalHouseId(null)}
-                className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* LIVE METRICS GRID (6 PARAMETERS) */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-              <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 mb-6">
+              <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4">
                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                   Current (A)
                 </div>
-                <div className="text-xl font-black text-cyan-400 mt-1">
+                <div className="text-2xl font-extrabold text-blue-600 mt-1">
                   {isModalHouseCut ? "0.000" : (modalHouseData?.currentA || 0).toFixed(3)} A
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">
+                <div className="text-[10px] text-slate-500 font-medium mt-0.5">
                   {modalHouseReduction > 0 ? `${modalHouseReduction}% reduced current` : "Smooth low deviation"}
                 </div>
               </div>
 
-              <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+              <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4">
                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                   Voltage (V)
                 </div>
-                <div className="text-xl font-black text-blue-400 mt-1">
+                <div className="text-2xl font-extrabold text-indigo-600 mt-1">
                   {isModalHouseCut ? "0.00" : (modalHouseData?.voltageV || 230).toFixed(2)} V
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">
+                <div className="text-[10px] text-slate-500 font-medium mt-0.5">
                   {isModalHouseCut ? "Kill Switch ON (0V)" : "Nominal ~230V Supply"}
                 </div>
               </div>
 
-              <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+              <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4">
                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                   Recorded Power
                 </div>
-                <div className="text-xl font-black text-emerald-400 mt-1">
+                <div className="text-2xl font-extrabold text-emerald-600 mt-1">
                   {isModalHouseCut ? "0.00" : (modalHouseData?.powerW || 0).toFixed(2)} W
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">
+                <div className="text-[10px] text-slate-500 font-medium mt-0.5">
                   {modalHouseReduction > 0
                     ? `Actual load: ${modalHouseData?.actualPowerW || 0} W`
                     : "Instantaneous meter reading"}
                 </div>
               </div>
 
-              <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+              <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4">
                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                   Energy / Sec (Wh)
                 </div>
-                <div className="text-xl font-black text-amber-400 mt-1">
+                <div className="text-2xl font-extrabold text-amber-600 mt-1">
                   {isModalHouseCut ? "0.00000" : (modalHouseData?.energyWh || 0).toFixed(5)} Wh
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Energy consumed per sec</div>
+                <div className="text-[10px] text-slate-500 font-medium mt-0.5">Energy consumed per sec</div>
               </div>
 
-              <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+              <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4">
                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                   Cumulative Energy
                 </div>
-                <div className="text-xl font-black text-purple-400 mt-1">
+                <div className="text-2xl font-extrabold text-purple-600 mt-1">
                   {(modalHouseData?.cumulativeEnergyWh || 0).toFixed(4)} Wh
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Total smart meter energy</div>
+                <div className="text-[10px] text-slate-500 font-medium mt-0.5">Total smart meter energy</div>
               </div>
 
-              <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+              <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4">
                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                   Power Factor
                 </div>
-                <div className="text-xl font-black text-slate-200 mt-1">
+                <div className="text-2xl font-extrabold text-slate-900 mt-1">
                   {modalHouseData?.powerFactor || 0.95}
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">PF standard 0.95</div>
+                <div className="text-[10px] text-slate-500 font-medium mt-0.5">PF standard 0.95</div>
               </div>
             </div>
 
             {/* GRAPH OF ENERGY PER SECOND */}
-            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 mb-6">
+            <div className="bg-slate-50/80 border border-slate-200/80 rounded-3xl p-5 mb-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-2">
-                  <Activity className="w-4 h-4 text-cyan-400" />
-                  <h4 className="text-sm font-bold text-white">
+                  <Activity className="w-4 h-4 text-emerald-600" />
+                  <h4 className="text-sm font-bold text-slate-900">
                     Energy Consumption Timeline (Wh / sec)
                   </h4>
                 </div>
-                <span className="text-[11px] text-slate-400">Real-time 60s moving window</span>
+                <span className="text-[11px] text-slate-500 font-medium">Real-time 60s moving window</span>
               </div>
 
               <div className="h-48 w-full">
@@ -1005,34 +1021,35 @@ export default function Dashboard() {
                     <AreaChart data={modalHouseChartData}>
                       <defs>
                         <linearGradient id="modalEnergyGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                          <stop offset="5%" stopColor="#059669" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#059669" stopOpacity={0.0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                      <XAxis dataKey="time" stroke="#64748b" fontSize={10} tickLine={false} />
-                      <YAxis stroke="#64748b" fontSize={10} unit="Wh" tickLine={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="time" stroke="#94a3b8" fontSize={10} tickLine={false} />
+                      <YAxis stroke="#94a3b8" fontSize={10} unit="Wh" tickLine={false} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: "#0f172a",
-                          borderColor: "#334155",
-                          borderRadius: "0.75rem",
-                          color: "#f8fafc",
+                          backgroundColor: "#ffffff",
+                          borderColor: "#e2e8f0",
+                          borderRadius: "1rem",
+                          color: "#0f172a",
+                          boxShadow: "0 10px 15px -3px rgba(0,0,0,0.08)",
                         }}
                       />
                       <Area
                         type="monotone"
                         dataKey="energyWh"
                         name="Energy (Wh/s)"
-                        stroke="#10b981"
-                        strokeWidth={2}
+                        stroke="#059669"
+                        strokeWidth={2.5}
                         fillOpacity={1}
                         fill="url(#modalEnergyGrad)"
                       />
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">
+                  <div className="h-full flex items-center justify-center text-slate-400 text-xs font-medium border border-dashed border-slate-200 rounded-2xl">
                     Start simulation to stream energy graph for this meter
                   </div>
                 )}
@@ -1041,19 +1058,19 @@ export default function Dashboard() {
 
             {/* CONTROLS SECTION: KILL SWITCH & POWER REDUCTION OPTIONS */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* 1. KILL SWITCH TYPE REMOTE POWER CONTROL */}
-              <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+              {/* 1. REMOTE POWER CONTROL */}
+              <div className="bg-slate-50/90 border border-slate-200/90 rounded-3xl p-5 flex flex-col justify-between">
                 <div className="flex items-center space-x-3 mb-3">
                   {isModalHouseCut ? (
-                    <AlertTriangle className="w-6 h-6 text-rose-500 shrink-0" />
+                    <AlertTriangle className="w-6 h-6 text-rose-600 shrink-0" />
                   ) : (
-                    <ShieldCheck className="w-6 h-6 text-emerald-400 shrink-0" />
+                    <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0" />
                   )}
                   <div>
-                    <div className="text-sm font-bold text-white">
+                    <div className="text-sm font-bold text-slate-900">
                       Remote Power Control (Kill Switch)
                     </div>
-                    <div className="text-xs text-slate-400 mt-0.5">
+                    <div className="text-xs text-slate-500 font-medium mt-0.5">
                       {isModalHouseCut
                         ? "Voltage supply set to 0V. Power completely disconnected."
                         : "Nominal 230V active supply to smart meter."}
@@ -1063,10 +1080,10 @@ export default function Dashboard() {
 
                 <button
                   onClick={() => toggleCutHouse(modalHouseId)}
-                  className={`w-full flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl font-bold transition-all text-xs shadow-md ${
+                  className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-2xl font-bold transition-all text-xs shadow-md ${
                     isModalHouseCut
-                      ? "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950"
-                      : "bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white"
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
+                      : "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20"
                   }`}
                 >
                   <Power className="w-4 h-4" />
@@ -1076,21 +1093,21 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              {/* 2. POWER REDUCTION / BYPASS OPTIONS (50%, 60%, 80% LESS POWER) */}
-              <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+              {/* 2. POWER REDUCTION / BYPASS OPTIONS */}
+              <div className="bg-slate-50/90 border border-slate-200/90 rounded-3xl p-5 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <div className="text-sm font-bold text-white flex items-center space-x-1.5">
-                      <Zap className="w-4 h-4 text-amber-400" />
+                    <div className="text-sm font-bold text-slate-900 flex items-center space-x-1.5">
+                      <Zap className="w-4 h-4 text-amber-600" />
                       <span>Power Reduction / Meter Bypass</span>
                     </div>
                   </div>
-                  <div className="text-xs text-slate-400 mb-3">
+                  <div className="text-xs text-slate-500 font-medium mb-3">
                     Select power reduction. Meter records less energy, increasing Sector Line Loss.
                   </div>
                 </div>
 
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-4 gap-2">
                   {[0, 50, 60, 80].map((pct) => {
                     const isActive = modalHouseReduction === pct;
                     return (
@@ -1098,14 +1115,14 @@ export default function Dashboard() {
                         key={pct}
                         disabled={isModalHouseCut}
                         onClick={() => setHouseReduction(modalHouseId, pct)}
-                        className={`py-2 px-1 rounded-xl text-xs font-black transition-all border ${
+                        className={`py-2.5 px-1 rounded-2xl text-xs font-bold transition-all border ${
                           isModalHouseCut
-                            ? "opacity-40 cursor-not-allowed bg-slate-900 border-slate-800 text-slate-600"
+                            ? "opacity-40 cursor-not-allowed bg-slate-100 border-slate-200 text-slate-400"
                             : isActive
                             ? pct === 0
-                              ? "bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-950/40"
-                              : "bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-950/40"
-                            : "bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700"
+                              ? "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20"
+                              : "bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-600/20"
+                            : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
                         }`}
                       >
                         {pct === 0 ? "0% (Normal)" : `${pct}% Less`}
