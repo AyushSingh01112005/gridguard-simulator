@@ -3,12 +3,12 @@ import mongoose from "mongoose";
 const ConsumerSchema = new mongoose.Schema(
   {
     consumer_id: { type: String, required: true },
-    timestamp: { type: String, required: true },
-    energy_kwh: { type: Number, required: true },
-    power_kw: { type: Number, required: true },
-    voltage_v: { type: Number, required: true },
-    current_a: { type: Number, required: true },
-    power_factor: { type: Number, required: true },
+    timestamp: { type: Date, required: true },
+    energy_kwh: { type: Number, default: null },
+    power_kw: { type: Number, default: null },
+    voltage_v: { type: Number, default: null },
+    current_a: { type: Number, default: null },
+    power_factor: { type: Number, default: null },
   },
   { _id: false }
 );
@@ -16,12 +16,12 @@ const ConsumerSchema = new mongoose.Schema(
 const TransformerSchema = new mongoose.Schema(
   {
     dt_id: { type: String, required: true },
-    timestamp: { type: String, required: true },
-    energy_kwh: { type: Number },
-    power_kw: { type: Number, required: true },
-    voltage_v: { type: Number, required: true },
-    current_a: { type: Number, required: true },
-    power_factor: { type: Number, required: true },
+    timestamp: { type: Date, required: true },
+    energy_kwh: { type: Number, default: null },
+    power_kw: { type: Number, default: null },
+    voltage_v: { type: Number, default: null },
+    current_a: { type: Number, default: null },
+    power_factor: { type: Number, default: null },
   },
   { _id: false }
 );
@@ -29,12 +29,14 @@ const TransformerSchema = new mongoose.Schema(
 const ReadingWindowSchema = new mongoose.Schema(
   {
     batch_id: { type: String, required: true },
-    simulated_at: { type: String, required: true },
+    simulated_at: { type: Date, required: true },
     transformer: { type: TransformerSchema, required: true },
     consumers: { type: [ConsumerSchema], required: true },
   },
-  { timestamps: true }
+  { timestamps: false, versionKey: false }
 );
+
+delete mongoose.models.ReadingWindow;
 
 const ReadingWindow =
   mongoose.models.ReadingWindow ||

@@ -78,26 +78,40 @@ export function startArea2Simulator(onReading, getIsHouseCut, getHouseReduction)
         power_factor: tfPf,
       };
 
-      // 2. Calculate Consumers metrics for window
+      // 2. Calculate Consumers metrics for window (7 fields per consumer)
       const consumersPayload = [];
       for (const consumerId in houseDataWindow) {
         const readings = houseDataWindow[consumerId];
         const count = readings.length || 1;
-        const totalEnergyWh = readings.reduce((a, b) => a + b.energyWh, 0);
-        const avgPowerW = readings.reduce((a, b) => a + b.powerW, 0) / count;
-        const avgVoltageV = readings.reduce((a, b) => a + b.voltageV, 0) / count;
-        const avgCurrentA = readings.reduce((a, b) => a + b.currentA, 0) / count;
-        const pf = readings[0]?.powerFactor || 0.95;
+        const isCut = readings.length > 0 && readings.every((r) => r.meterStatus === "POWER CUT" || r.voltageV === 0);
 
-        consumersPayload.push({
-          consumer_id: consumerId,
-          timestamp: simulatedAt,
-          energy_kwh: Number((totalEnergyWh / 1000).toFixed(4)),
-          power_kw: Number((avgPowerW / 1000).toFixed(2)),
-          voltage_v: Number(avgVoltageV.toFixed(1)),
-          current_a: Number(avgCurrentA.toFixed(1)),
-          power_factor: pf,
-        });
+        if (isCut) {
+          consumersPayload.push({
+            consumer_id: consumerId,
+            timestamp: simulatedAt,
+            energy_kwh: null,
+            power_kw: null,
+            voltage_v: null,
+            current_a: null,
+            power_factor: null,
+          });
+        } else {
+          const totalEnergyWh = readings.reduce((a, b) => a + b.energyWh, 0);
+          const avgPowerW = readings.reduce((a, b) => a + b.powerW, 0) / count;
+          const avgVoltageV = readings.reduce((a, b) => a + b.voltageV, 0) / count;
+          const avgCurrentA = readings.reduce((a, b) => a + b.currentA, 0) / count;
+          const pf = readings[0]?.powerFactor || 0.95;
+
+          consumersPayload.push({
+            consumer_id: consumerId,
+            timestamp: simulatedAt,
+            energy_kwh: Number((totalEnergyWh / 1000).toFixed(4)),
+            power_kw: Number((avgPowerW / 1000).toFixed(4)),
+            voltage_v: Number(avgVoltageV.toFixed(2)),
+            current_a: Number(avgCurrentA.toFixed(3)),
+            power_factor: Number(pf.toFixed(3)),
+          });
+        }
       }
 
       // 3. Assemble JSON Payload in requested schema
