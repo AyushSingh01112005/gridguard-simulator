@@ -2,6 +2,7 @@ import { createHouseMeter } from "./houseMeter";
 import { createTransformerMeter } from "./transformerMeter";
 
 const AREA_NAME = "AREA-2";
+const DT_ID = "DT-02";
 const CONSUMER_PREFIX = "A2-C";
 
 // 1. Initialize 50 house meters for Area 2
@@ -24,7 +25,7 @@ export function startArea2Simulator(onReading, getIsHouseCut, getHouseReduction)
     secondsElapsed++;
     let totalHousePowerInTick = 0;
 
-    // Tick every house in Area 2 with dynamic unique load variations (low deviation for current)
+    // Tick every house in Area 2 with dynamic unique load variations
     meters.forEach((meter, index) => {
       const houseNum = index + 1;
       const consumerId = `${CONSUMER_PREFIX}${100 + houseNum}`;
@@ -33,75 +34,82 @@ export function startArea2Simulator(onReading, getIsHouseCut, getHouseReduction)
 
       // Base load distinct to each house (between 200W and 3600W)
       const baseLoad = 200 + ((houseNum * 137 + 120) % 3400);
-      
-      // Micro smooth fluctuation every second (+/- 3W max) to keep current deviation low
       const noise = (Math.random() - 0.5) * 6;
-      
-      // Slower smooth sine wave simulating appliance cycles
       const wave = Math.sin((secondsElapsed + houseNum * 9) / 60) * 45;
 
       const dynamicLoadW = Math.max(50, Math.min(4900, baseLoad + noise + wave));
-
       const reading = meter(dynamicLoadW, isCut, reductionPercent);
 
-      // Transformer draws the actual physical power (0W if cut)
       const actualPowerW = isCut ? 0 : dynamicLoadW;
       totalHousePowerInTick += actualPowerW;
-      houseDataWindow[reading.consumerId].push(reading.energyWh);
+      houseDataWindow[reading.consumerId].push(reading);
 
       if (onReading) onReading({ area: AREA_NAME, type: "HOUSE", data: reading });
     });
 
     // Tick Area 2 Transformer
     const transformerReading = transformer(totalHousePowerInTick);
-    transformerWindow.push(transformerReading.energyWh);
+    transformerWindow.push(transformerReading);
 
     if (onReading) onReading({ area: AREA_NAME, type: "TRANSFORMER", data: transformerReading });
 
     // 60-Second Window Rollup
     if (secondsElapsed === 60) {
-      console.log(`\n================== 60-SEC REPORT: ${AREA_NAME} ==================`);
+      console.log(`\n================== 60-SEC REPORT: ${AREA_NAME} (${DT_ID}) ==================`);
 
-      let sumAllHousesWh = 0;
-      const houseSummary = {};
-      const housesPayload = [];
+      const simulatedAt = new Date().toISOString();
+      const batchId = generateBatchId(DT_ID, new Date(simulatedAt));
 
+      // 1. Calculate Transformer metrics for window
+      const tfCount = transformerWindow.length || 1;
+      const avgTfPowerW = transformerWindow.reduce((a, b) => a + b.powerW, 0) / tfCount;
+      const avgTfVoltageV = transformerWindow.reduce((a, b) => a + b.voltageV, 0) / tfCount;
+      const avgTfCurrentA = transformerWindow.reduce((a, b) => a + b.currentA, 0) / tfCount;
+      const tfPf = transformerWindow[0]?.powerFactor || 0.93;
+
+      const transformerPayload = {
+        dt_id: DT_ID,
+        timestamp: simulatedAt,
+        power_kw: Number((avgTfPowerW / 1000).toFixed(2)),
+        voltage_v: Number(avgTfVoltageV.toFixed(1)),
+        current_a: Number(avgTfCurrentA.toFixed(1)),
+        power_factor: tfPf,
+      };
+
+      // 2. Calculate Consumers metrics for window
+      const consumersPayload = [];
       for (const consumerId in houseDataWindow) {
-        const readings60 = houseDataWindow[consumerId];
-        const houseTotal = readings60.reduce((a, b) => a + b, 0);
-        houseSummary[consumerId] = Number(houseTotal.toFixed(5));
-        sumAllHousesWh += houseTotal;
+        const readings = houseDataWindow[consumerId];
+        const count = readings.length || 1;
+        const totalEnergyWh = readings.reduce((a, b) => a + b.energyWh, 0);
+        const avgPowerW = readings.reduce((a, b) => a + b.powerW, 0) / count;
+        const avgVoltageV = readings.reduce((a, b) => a + b.voltageV, 0) / count;
+        const avgCurrentA = readings.reduce((a, b) => a + b.currentA, 0) / count;
+        const pf = readings[0]?.powerFactor || 0.95;
 
-        housesPayload.push({
-          consumerId,
-          energyConsumedWh: Number(houseTotal.toFixed(5)),
-          readings: readings60.map((r) => Number(r.toFixed(5))), // Array of 60 readings
+        consumersPayload.push({
+          consumer_id: consumerId,
+          timestamp: simulatedAt,
+          energy_kwh: Number((totalEnergyWh / 1000).toFixed(4)),
+          power_kw: Number((avgPowerW / 1000).toFixed(2)),
+          voltage_v: Number(avgVoltageV.toFixed(1)),
+          current_a: Number(avgCurrentA.toFixed(1)),
+          power_factor: pf,
         });
       }
 
-      const sumTransformerWh = transformerWindow.reduce((a, b) => a + b, 0);
-      const lineLossWh = sumTransformerWh - sumAllHousesWh;
-
-      console.table(houseSummary);
-      console.log("------------------------------------------------------------");
-      console.log(`Area 2 (50 Houses Total) : ${sumAllHousesWh.toFixed(5)} Wh`);
-      console.log(`Area 2 Transformer Total : ${sumTransformerWh.toFixed(5)} Wh`);
-      console.log(`Area 2 Line Loss         : ${lineLossWh.toFixed(5)} Wh`);
-      console.log(`============================================================\n`);
-
-      // Save to MongoDB via API Route
+      // 3. Assemble JSON Payload in requested schema
       const payload = {
-        area: AREA_NAME,
-        windowDuration: 60,
-        houses: housesPayload,
-        transformer: {
-          transformerId: `TR-${AREA_NAME}`,
-          energyConsumedWh: Number(sumTransformerWh.toFixed(5)),
-        },
-        totalHousesEnergyWh: Number(sumAllHousesWh.toFixed(5)),
-        lineLossWh: Number(lineLossWh.toFixed(5)),
+        batch_id: batchId,
+        simulated_at: simulatedAt,
+        transformer: transformerPayload,
+        consumers: consumersPayload,
       };
 
+      console.log(`[${AREA_NAME}] Payload generated for Batch: ${batchId}`);
+      console.log(JSON.stringify(payload, null, 2));
+
+      // Save to MongoDB via API Route
       fetch("/api/readings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -110,7 +118,7 @@ export function startArea2Simulator(onReading, getIsHouseCut, getHouseReduction)
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
-            console.log(`[${AREA_NAME}] Saved 60-sec window data to DB successfully! ID:`, data.data._id);
+            console.log(`[${AREA_NAME}] Saved 60-sec batch window to DB successfully! ID:`, data.data._id);
           } else {
             console.error(`[${AREA_NAME}] Failed to save data to DB:`, data.error);
           }
@@ -133,4 +141,13 @@ function createEmptyDataStore() {
     store[`${CONSUMER_PREFIX}${100 + i}`] = [];
   }
   return store;
+}
+
+function generateBatchId(dtId, date = new Date()) {
+  const yyyy = date.getUTCFullYear();
+  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(date.getUTCDate()).padStart(2, "0");
+  const hh = String(date.getUTCHours()).padStart(2, "0");
+  const min = String(date.getUTCMinutes()).padStart(2, "0");
+  return `b-${yyyy}${mm}${dd}T${hh}${min}-${dtId}`;
 }

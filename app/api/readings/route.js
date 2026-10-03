@@ -8,9 +8,9 @@ export async function POST(req) {
     const body = await req.json();
 
     // Validate required payload fields
-    if (!body.area || !body.houses || !body.transformer) {
+    if (!body.batch_id || !body.consumers || !body.transformer) {
       return NextResponse.json(
-        { success: false, error: "Missing required fields (area, houses, transformer)" },
+        { success: false, error: "Missing required fields (batch_id, consumers, transformer)" },
         { status: 400 }
       );
     }

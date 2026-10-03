@@ -1,30 +1,36 @@
 import mongoose from "mongoose";
 
-const HouseSummarySchema = new mongoose.Schema(
+const ConsumerSchema = new mongoose.Schema(
   {
-    consumerId: { type: String, required: true },
-    energyConsumedWh: { type: Number, required: true },
+    consumer_id: { type: String, required: true },
+    timestamp: { type: String, required: true },
+    energy_kwh: { type: Number, required: true },
+    power_kw: { type: Number, required: true },
+    voltage_v: { type: Number, required: true },
+    current_a: { type: Number, required: true },
+    power_factor: { type: Number, required: true },
   },
   { _id: false }
 );
 
-const TransformerSummarySchema = new mongoose.Schema(
+const TransformerSchema = new mongoose.Schema(
   {
-    transformerId: { type: String, required: true },
-    energyConsumedWh: { type: Number, required: true },
+    dt_id: { type: String, required: true },
+    timestamp: { type: String, required: true },
+    power_kw: { type: Number, required: true },
+    voltage_v: { type: Number, required: true },
+    current_a: { type: Number, required: true },
+    power_factor: { type: Number, required: true },
   },
   { _id: false }
 );
 
 const ReadingWindowSchema = new mongoose.Schema(
   {
-    area: { type: String, required: true },
-    windowDuration: { type: Number, required: true, default: 60 },
-    houses: { type: [HouseSummarySchema], required: true }, // Expects an Array
-    transformer: { type: TransformerSummarySchema, required: true },
-    
-    totalHousesEnergyWh: { type: Number, required: true },
-    lineLossWh: { type: Number, required: true },
+    batch_id: { type: String, required: true },
+    simulated_at: { type: String, required: true },
+    transformer: { type: TransformerSchema, required: true },
+    consumers: { type: [ConsumerSchema], required: true },
   },
   { timestamps: true }
 );
