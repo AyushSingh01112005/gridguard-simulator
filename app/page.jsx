@@ -381,7 +381,7 @@ export default function Dashboard() {
           <div>
             <div className="flex items-center space-x-3">
               <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-slate-900">
-                Microgrid Smart Meter Dashboard
+                GridGuard Smart Meter Dashboard
               </h1>
                
             </div>

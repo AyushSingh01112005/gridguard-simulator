@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Microgrid Smart Meter",
+  title: "GridGuard Simulator",
   description: "Indian Smart Distribution Network Simulator",
   icons: {
     icon: [
