@@ -1,5 +1,6 @@
 import { createHouseMeter } from "./houseMeter";
 import { createTransformerMeter } from "./transformerMeter";
+import { fetchLastSimulatedDate, addOneDay } from "../../lib/simulationDate";
 
 const AREA_NAME = "AREA-3";
 const DT_ID = "DT-03";
@@ -20,6 +21,19 @@ export function startArea3Simulator(onReading, getIsHouseCut, getHouseReduction,
   let houseDataWindow = createEmptyDataStore();
   let transformerWindow = [];
   let secondsElapsed = 0;
+
+  // Track simulation date starting from last MongoDB record timestamp (or 1999-12-31 for default 2000-01-01 start)
+  let currentSimulatedDate = null;
+
+  fetchLastSimulatedDate(DT_ID).then((lastDate) => {
+    if (lastDate) {
+      currentSimulatedDate = lastDate;
+      console.log(`[${AREA_NAME}] Extracted last JSON timestamp from MongoDB GET: ${lastDate.toISOString()}`);
+    } else {
+      currentSimulatedDate = new Date("1999-12-31T00:00:00.000Z");
+      console.log(`[${AREA_NAME}] No MongoDB record found. Defaulting base date to 1999-12-31`);
+    }
+  });
 
   const interval = setInterval(() => {
     secondsElapsed++;
@@ -58,8 +72,14 @@ export function startArea3Simulator(onReading, getIsHouseCut, getHouseReduction,
     if (secondsElapsed === 60) {
       console.log(`\n================== 60-SEC REPORT: ${AREA_NAME} (${DT_ID}) ==================`);
 
-      const simulatedAt = new Date().toISOString();
-      const batchId = generateBatchId(DT_ID, new Date(simulatedAt));
+      if (!currentSimulatedDate) {
+        currentSimulatedDate = new Date("1999-12-31T00:00:00.000Z");
+      }
+      // Next data sent to MongoDB gets the next date (+1 day) from extracted date
+      currentSimulatedDate = addOneDay(currentSimulatedDate);
+
+      const simulatedAt = currentSimulatedDate.toISOString();
+      const batchId = generateBatchId(DT_ID, currentSimulatedDate);
 
       // 1. Calculate Transformer metrics for window
       const tfCount = transformerWindow.length || 1;

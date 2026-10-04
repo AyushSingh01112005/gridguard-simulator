@@ -40,7 +40,7 @@ export async function POST(req) {
 export async function GET(req) {
   try {
     await connectDB();
-    const readings = await ReadingWindow.find({}).sort({ createdAt: -1 }).limit(20);
+    const readings = await ReadingWindow.find({}).sort({ simulated_at: -1, _id: -1 }).limit(50);
     return NextResponse.json({ success: true, data: readings });
   } catch (error) {
     console.error("Error fetching readings:", error);
