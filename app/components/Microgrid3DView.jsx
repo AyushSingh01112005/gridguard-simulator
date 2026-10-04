@@ -800,9 +800,8 @@ export default function Microgrid3DView({
       {/* TOP OVERLAY CONTROL BAR */}
       <div className="absolute top-4 left-4 right-4 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
         <div className="flex items-center space-x-2 bg-white/80 border border-gray-200 px-4 py-2 rounded-2xl backdrop-blur-md shadow-md shadow-gray-200/50 pointer-events-auto">
-          <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping" />
           <span className="text-xs font-semibold text-gray-900 tracking-tight">
-            3D Smart City Grid (Roads, Street Light Poles, Trees & Moving Cars with Headlights)
+            3D Smart City Grid  
           </span>
         </div>
 
@@ -961,26 +960,7 @@ export default function Microgrid3DView({
         );
       })}
 
-      {/* BOTTOM LEGEND BAR */}
-      <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between text-[11px] text-gray-600 bg-white/80 border border-gray-200 px-4 py-2.5 rounded-2xl backdrop-blur-md shadow-lg shadow-gray-200/50 pointer-events-auto">
-        <div className="flex items-center space-x-4 flex-wrap gap-y-1">
-          <div className="flex items-center space-x-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-slate-700" />
-            <span className="font-semibold text-gray-800">Inter-Sector Roads</span>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-            <span className="font-semibold text-gray-800">Trees &amp; Light Poles</span>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-            <span className="font-semibold text-gray-800">Animated Cars with ON Headlights</span>
-          </div>
-        </div>
-        <div className="hidden sm:block text-gray-500 font-medium">
-          Drag to rotate • Scroll to zoom • Click house or transformer to inspect
-        </div>
-      </div>
+       
     </div>
   );
 }

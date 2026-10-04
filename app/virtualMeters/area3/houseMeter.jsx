@@ -1,12 +1,12 @@
 export function createHouseMeter(
   consumerId,
   meterId,
-  sanctionedLoadW = 5000
+  sanctionedLoadW = 10000000
 ) {
   let cumulativeEnergyWh = 0;
 
-  // 400 kWh over 30 days = 400,000 Wh / (30 * 24 h) = ~555.56 W average load
-  const TARGET_AVG_LOAD_W = 555.56;
+  // Target load set to ~7.5 MW average load to achieve 100 - 150 kWh per minute per house
+  const TARGET_AVG_LOAD_W = 7500000;
 
   return function generateReading(loadW = TARGET_AVG_LOAD_W, isCut = false, reductionPercent = 0) {
     if (isCut) {

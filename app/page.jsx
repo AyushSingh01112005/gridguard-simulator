@@ -47,21 +47,21 @@ const AREA_META = {
     transformerId: "TR-AREA-1",
     color: "#2563eb", // Apple Blue
     consumerPrefix: "A1-C",
-    capacity: "100 kVA",
+    capacity: "500 MVA",
   },
   "AREA-2": {
     name: "Sector Beta (Area 2)",
     transformerId: "TR-AREA-2",
     color: "#059669", // Apple Emerald Green
     consumerPrefix: "A2-C",
-    capacity: "100 kVA",
+    capacity: "500 MVA",
   },
   "AREA-3": {
     name: "Sector Gamma (Area 3)",
     transformerId: "TR-AREA-3",
     color: "#7c3aed", // Apple Purple
     consumerPrefix: "A3-C",
-    capacity: "100 kVA",
+    capacity: "500 MVA",
   },
 };
 
@@ -101,6 +101,26 @@ export default function Dashboard() {
   // Map of consumerId -> reduction percentage (0, 50, 60, 80)
   const [reducedHouses, setReducedHouses] = useState({});
   const reducedHousesRef = useRef({});
+
+  // Map of areaKey -> transformer loss percentage (5, 10, 15, 20, 25, 30, 35, 40, 50, 55, 60, 65, 70)
+  const [transformerLosses, setTransformerLosses] = useState({
+    "AREA-1": 5,
+    "AREA-2": 5,
+    "AREA-3": 5,
+  });
+  const transformerLossesRef = useRef({
+    "AREA-1": 5,
+    "AREA-2": 5,
+    "AREA-3": 5,
+  });
+
+  const setSectorTransformerLoss = (areaKey, lossPercent) => {
+    setTransformerLosses((prev) => {
+      const nextState = { ...prev, [areaKey]: lossPercent };
+      transformerLossesRef.current = nextState;
+      return nextState;
+    });
+  };
 
   const toggleCutHouse = (consumerId) => {
     setCutHouses((prev) => {
@@ -218,10 +238,11 @@ export default function Dashboard() {
 
     const isCutCheck = (consumerId) => !!cutHousesRef.current[consumerId];
     const getReductionCheck = (consumerId) => reducedHousesRef.current[consumerId] || 0;
+    const getTransformerLossCheck = (area) => transformerLossesRef.current[area] || 5;
 
-    const stop1 = startArea1Simulator(handleReading, isCutCheck, getReductionCheck);
-    const stop2 = startArea2Simulator(handleReading, isCutCheck, getReductionCheck);
-    const stop3 = startArea3Simulator(handleReading, isCutCheck, getReductionCheck);
+    const stop1 = startArea1Simulator(handleReading, isCutCheck, getReductionCheck, getTransformerLossCheck);
+    const stop2 = startArea2Simulator(handleReading, isCutCheck, getReductionCheck, getTransformerLossCheck);
+    const stop3 = startArea3Simulator(handleReading, isCutCheck, getReductionCheck, getTransformerLossCheck);
 
     const flushInterval = setInterval(() => {
       if (bufferRef.current.dirty) {
@@ -341,6 +362,11 @@ export default function Dashboard() {
     return loss > 0 ? loss : 0;
   }, [currentTransformer, activeAreaHousePowerTotal]);
 
+  const activeLineLossKWh = useMemo(() => {
+    // Energy lost per minute in kWh = (Power loss in Watts * 60s) / 3,600,000 = Power loss in Watts / 60,000
+    return activeLineLoss / 60000;
+  }, [activeLineLoss]);
+
   const isModalHouseCut = modalHouseId ? !!cutHouses[modalHouseId] : false;
   const modalHouseReduction = modalHouseId ? (reducedHouses[modalHouseId] || 0) : 0;
 
@@ -357,20 +383,7 @@ export default function Dashboard() {
               <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-slate-900">
                 Microgrid Smart Meter Dashboard
               </h1>
-              <span
-                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold tracking-wide ${
-                  isRunning
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm"
-                    : "bg-slate-100 text-slate-600 border border-slate-200"
-                }`}
-              >
-                <span
-                  className={`w-2 h-2 rounded-full mr-2 ${
-                    isRunning ? "bg-emerald-500 animate-ping" : "bg-slate-400"
-                  }`}
-                />
-                {isRunning ? "Live Streaming" : "Idle"}
-              </span>
+               
             </div>
             <p className="text-xs lg:text-sm text-slate-500 font-medium mt-1">
               3 Sector Distribution Grid • 3 Transformers • 150 Smart Meters
@@ -433,17 +446,40 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
-            <span>SECTOR LINE LOSS</span>
-            <TrendingUp className="w-4 h-4 text-amber-600" />
+        <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
+              <span>SECTOR LINE LOSS</span>
+              <TrendingUp className="w-4 h-4 text-amber-600" />
+            </div>
+            <div className="text-3xl font-extrabold text-amber-600 tracking-tight">
+              {activeLineLossKWh.toFixed(2)}{" "}
+              <span className="text-base font-semibold text-slate-400">
+                kWh  
+              </span>
+            </div>
+            <div className="text-xs text-slate-400 font-medium mt-1">
+              Power Loss: {(activeLineLoss / 1000).toFixed(1)} kW
+            </div>
           </div>
-          <div className="text-3xl font-extrabold text-amber-600 tracking-tight">
-            {activeLineLoss.toFixed(1)}{" "}
-            <span className="text-base font-semibold text-slate-400">W</span>
-          </div>
-          <div className="text-xs text-slate-500 font-medium mt-1">
-            ~5% estimated technical loss
+
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500">
+              Technical Loss %:
+            </span>
+            <select
+              value={transformerLosses[activeArea] || 5}
+              onChange={(e) =>
+                setSectorTransformerLoss(activeArea, Number(e.target.value))
+              }
+              className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-semibold rounded-xl px-2.5 py-1 outline-none focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer shadow-xs"
+            >
+              {[5, 10, 15, 20, 25, 30, 35, 40, 50, 55, 60, 65, 70].map((val) => (
+                <option key={val} value={val}>
+                  ~{val}% Technical Loss
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

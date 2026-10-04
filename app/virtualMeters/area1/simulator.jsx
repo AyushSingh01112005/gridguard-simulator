@@ -9,14 +9,14 @@ const CONSUMER_PREFIX = "A1-C";
 const meters = [];
 for (let i = 1; i <= 50; i++) {
   meters.push(
-    createHouseMeter(`${CONSUMER_PREFIX}${100 + i}`, `M-A1-${100 + i}`, 5000)
+    createHouseMeter(`${CONSUMER_PREFIX}${100 + i}`, `M-A1-${100 + i}`, 10000000)
   );
 }
 
 // 2. Initialize Area 1 Transformer
-const transformer = createTransformerMeter("TR-AREA-1", 100);
+const transformer = createTransformerMeter("TR-AREA-1", 500000);
 
-export function startArea1Simulator(onReading, getIsHouseCut, getHouseReduction) {
+export function startArea1Simulator(onReading, getIsHouseCut, getHouseReduction, getTransformerLoss) {
   let houseDataWindow = createEmptyDataStore();
   let transformerWindow = [];
   let secondsElapsed = 0;
@@ -32,12 +32,12 @@ export function startArea1Simulator(onReading, getIsHouseCut, getHouseReduction)
       const isCut = typeof getIsHouseCut === "function" ? getIsHouseCut(consumerId) : false;
       const reductionPercent = typeof getHouseReduction === "function" ? (getHouseReduction(consumerId) || 0) : 0;
 
-      // Base load distinct to each house (between 250W and 3500W)
-      const baseLoad = 250 + ((houseNum * 113 + 70) % 3200);
-      const noise = (Math.random() - 0.5) * 6;
-      const wave = Math.sin((secondsElapsed + houseNum * 7) / 60) * 40;
+      // Base load distinct to each house (between 6,000,000W and 9,000,000W to consume 100 - 150 kWh per min)
+      const baseLoad = 6000000 + ((houseNum * 56000 + 7000) % 2800000);
+      const noise = (Math.random() - 0.5) * 10000;
+      const wave = Math.sin((secondsElapsed + houseNum * 7) / 60) * 80000;
 
-      const dynamicLoadW = Math.max(60, Math.min(4850, baseLoad + noise + wave));
+      const dynamicLoadW = Math.max(6000000, Math.min(9000000, baseLoad + noise + wave));
       const reading = meter(dynamicLoadW, isCut, reductionPercent);
 
       const actualPowerW = isCut ? 0 : dynamicLoadW;
@@ -47,8 +47,9 @@ export function startArea1Simulator(onReading, getIsHouseCut, getHouseReduction)
       if (onReading) onReading({ area: AREA_NAME, type: "HOUSE", data: reading });
     });
 
-    // Tick Area 1 Transformer
-    const transformerReading = transformer(totalHousePowerInTick);
+    // Tick Area 1 Transformer with dynamic loss percentage
+    const lossPercent = typeof getTransformerLoss === "function" ? (getTransformerLoss(AREA_NAME) || 5) : 5;
+    const transformerReading = transformer(totalHousePowerInTick, lossPercent);
     transformerWindow.push(transformerReading);
 
     if (onReading) onReading({ area: AREA_NAME, type: "TRANSFORMER", data: transformerReading });

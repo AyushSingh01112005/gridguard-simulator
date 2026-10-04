@@ -4,8 +4,10 @@ export function createTransformerMeter(
 ) {
   let cumulativeEnergyWh = 0;
 
-  return function generateReading(totalHousesPowerW = 0) {
-    const LOSS_FACTOR = 1.05;
+  return function generateReading(totalHousesPowerW = 0, lossPercent = 5) {
+    // Dynamic technical loss factor based on configured loss percentage (default 5%)
+    const validLoss = typeof lossPercent === "number" && !isNaN(lossPercent) ? lossPercent : 5;
+    const LOSS_FACTOR = 1 + validLoss / 100;
     const powerW = totalHousesPowerW * LOSS_FACTOR;
 
     const voltageV = 415 + (Math.random() - 0.5) * 4; // ~413V to 417V (3-phase DT voltage)
