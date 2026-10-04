@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="50%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#7c3aed" />
+    </linearGradient>
+  </defs>
+  <!-- Full scaled circle (130% fill, transparent background, no black border box) -->
+  <circle cx="50" cy="50" r="49" fill="url(#blueGrad)" />
+  <!-- Crisp Centered White Lightning Bolt Icon -->
+  <path d="M54 14 L26 53 H48 L44 86 L74 45 H52 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1" stroke-linejoin="round" />
+</svg>
